@@ -1,0 +1,125 @@
+# visualizing logistic regression in higher dimensions.
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+
+def simulate_gaussian_data(n, p, noise_std=1.0):
+    """
+    Simulate multivariate Gaussian dataset.
+    """
+    X = np.random.multivariate_normal(mean=np.zeros(p), cov=np.eye(p), size=n) # X ~ MVN(0, I_p)
+    true_coefficients = np.random.randn(p) # coeff ~ N(0, 1)
+    y = X @ true_coefficients + np.random.normal(0, noise_std, n) # e ~ N(0, noise_std^2)
+    return X, y, true_coefficients
+
+def compute_influence_function(X, y, index):
+    """
+    X (NDArray): [n, p]; data matrix.
+    y (Array): [n]; response variable.
+    index (int): index of the dropped point.
+    Output (Array): [p]; the influence function approximation for the dropped point.
+    """
+    # Fit the model to the full dataset
+    model1 = LinearRegression(fit_intercept=False)
+    model1.fit(X, y)
+    
+    # Coefficients from the full model
+    beta_full = model1.coef_
+    
+    # Compute the gradient of the loss function w.r.t the parameters
+    residuals = y - model1.predict(X)
+    gradient = X[index] * residuals[index]
+    hessian = np.linalg.inv(X.T @ X)
+
+    # Influence function approximation to dropping a data point.
+    return beta_full - (hessian @ gradient)
+
+def compute_IF_and_refits(X, y):
+    """
+    X (NDArray): [n, p]; data matrix.
+    y (Array): [n]; response variable.
+    Output (Array): 
+    - [n, p]; the influence function approximation for each dropped point.
+    - [n, p]; the refit coefficients for each dropped point.
+    - [p]; the coefficients from the model fit to full data.
+    """
+    model_full = LinearRegression(fit_intercept=False)
+    model_full_fit = model_full.fit(X, y)
+    model_full_coef = model_full_fit.coef_
+
+    # Compute the eigenvalues of X^T * X
+    XtX = np.dot(X.T, X)
+    eigenvalues_XtX = np.linalg.eigvals(XtX)
+
+    influence_functions = np.zeros((n, p))
+    refit_coefficients = np.zeros((n, p))
+    # for each data point
+    for i in range(0, X.shape[0]):
+        # compute influence functions and refit values.
+        influence_functions[i] = compute_influence_function(X, y, i)
+        
+        # refit the model without the ith data point.
+        deleted_i_X = np.delete(X, i, axis=0)
+        deleted_i_y = np.delete(y, i)
+        model_d = LinearRegression(fit_intercept=False)
+        model_d.fit(deleted_i_X, deleted_i_y)
+        refit_coefficients[i] = model_d.coef_
+    
+    return influence_functions, refit_coefficients, model_full_coef, eigenvalues_XtX
+        
+
+
+if __name__ == "__main__":
+    # set hyperparameters.
+    np.random.seed(6) # set a seed.
+    GAMMA = 10 # n / p (for smaller GAMMA, the IF decreases in accuracy, due to sparsity of data points).
+    N_SIM = 3 
+    P_LIST = [2, 5, 10]
+
+    # # simulate data set.
+    # X, y, true_coefficients = simulate_gaussian_data(n, p)
+    # # compute influence functions and refit coefficients.
+    # influence_functions, refit_coefficients, model_full_coef, eigenvalues_XtX = compute_IF_and_refits(X, y)
+    # print("influence_functions,", influence_functions)
+    # print("refit_coefficients,", refit_coefficients)
+
+    ALL_SIMS = []
+    for size in P_LIST:
+        p = size
+        n = GAMMA * p
+        # list of simulations for a given n and p. 
+        NP_CURR = [] # length N_sim.
+        for s in range(N_SIM):
+            # simulate data set.
+            X, y, true_coefficients = simulate_gaussian_data(n, p)
+            # compute influence functions and refit coefficients.
+            influence_functions, refit_coefficients, model_full_coef, eigenvalues_XtX = compute_IF_and_refits(X, y)
+            # append simulation results.
+            simulation = {'simulation': s, 'if': influence_functions, 
+            'refit': refit_coefficients, 'model_full_coef': model_full_coef, 
+            'eigenvalues_XtX': eigenvalues_XtX}
+
+            NP_CURR.append(simulation)
+        THIS_NP_SIM = {'p': size, 'results': NP_CURR}
+        ALL_SIMS.append(THIS_NP_SIM)
+    
+    ### Results.
+    # indexing order: index of p, simulation results for p, simulation number, refit coefficients.
+    print(f"Results for p = {ALL_SIMS[1]['p']}, Simulation #{ALL_SIMS[1]['results'][1]['simulation']}.\n")
+    print(f"Coefficients from the full model: {ALL_SIMS[1]['results'][1]['model_full_coef']}.\n")
+    print(f"The condition number of X^TX: {ALL_SIMS[1]['results'][1]['eigenvalues_XtX']}.\n")
+    print(f"Influence functions: \n {ALL_SIMS[1]['results'][1]['if']}.\n")
+    print(f"Refit coefficients: \n {ALL_SIMS[1]['results'][1]['refit']}.\n")
+    print(f"IF - Refit: \n {ALL_SIMS[1]['results'][1]['if'] - ALL_SIMS[1]['results'][1]['refit']}.\n")
+
+    # plot first data point, first dimension: (dim, mean refit, mean IF for first datapoint).
+    # plot worst case data point, first dimension: (dim, compute error for all data points. pick the refit, mean for the point with the largest error.)
+    # plot worst case data point, worst case dimension.
+
+    # Create an empty DataFrame to hold the results
+    # results_df = pd.DataFrame(columns=['p', 'avg(NP_CURR)', 'sd(NP_CURR)'])
+
+
+    
+
+    
