@@ -1,4 +1,4 @@
-# visualizing logistic regression in higher dimensions.
+# inspecting the quality of the IF in higher dimensions.
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
