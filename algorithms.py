@@ -1,13 +1,14 @@
 ## This script contains optimization algorithms (and associated helper functions) 
-# from MR23 and FH23.
+# from MR23 and FH23 as well as the Greedy AMIP/1Exact algorithms.
 import numpy as np
 import pandas as pd
 import gurobipy as gp
 from gurobipy import GRB
+from linear_regression import LinearRegression
+import matplotlib.pyplot as plt
 import scipy.linalg
 import itertools
-import matplotlib.pyplot as plt
-
+import postprocessing
 '''
 For fixed lambda, compute maximum weight of any weight vector w
 that has lambda in OLS(X,y,w)
@@ -590,9 +591,7 @@ def net_algorithm(X,y,trials):
         w = solve_fixed_lambda(X,XR,lam)
         if sum(w) > sum(wstar):
             wstar = w
-    return n-sum(wstar)
-
-
+    return n-sum(wstar), wstar
 
 # A toolkit for regression auditing
 # From Authors: Daniel Freund, Sam Hopkins
@@ -797,3 +796,61 @@ def get_negative_OLS(X,Y):
     assert np.is_close(beta_err, beta_shifted_err) # beta and beta_shifted should both be OLS optimizers
 
     return beta_shifted
+
+def Run_Greedy(x, y, orig_if_inds, orig_newton_inds, lr, positivebeta, method='IF'):
+    '''
+    x: design matrix.
+    y: response vector.
+    orig_inds: indices sorted by the first round.
+    lr: linear regression object.
+    positivebeta: boolean, if True, beta should be positive.
+    method: 'IF' or '1Exact'.
+    '''
+    ctr = 0
+    prev_beta = lr.beta[1]
+    dropped_order = []
+    exact_changes_beta = []
+    beta_estimates_greedy = []
+    if_inds = orig_if_inds
+    newton_inds = orig_newton_inds
+
+    # Track the mapping from current indices to original indices
+    current_indices = list(range(len(y)))
+
+    for _ in range(185):
+        print(f'iteration {ctr}')
+
+        if method == 'IF':
+            inds = if_inds
+        else:
+            inds = newton_inds
+        
+        index_to_remove = inds[0]
+        # Record the original index being removed
+        original_index = current_indices[index_to_remove]
+        print("index to remove (original):", original_index)
+        dropped_order.append(original_index)
+
+        # Remove the data point
+        x = np.delete(x, index_to_remove, axis=0)
+        y = np.delete(y, index_to_remove, axis=0)
+        current_indices.pop(index_to_remove)  # Update index map
+
+        # Refit linear regression
+        lr = LinearRegression(x=x.T, y=y)
+        lr.fit()
+        print(f'fitted beta1: {lr.beta[1]}')
+
+        # Recompute scores and plot
+        orig_df, if_inds, if_scores, newton_inds, newton_scores = postprocessing.create_orig_df(x, y, lr, positivebeta)
+        # create_plot(orig_df)
+
+        # Track beta changes
+        beta_change = lr.beta[1] - prev_beta
+        exact_changes_beta.append(beta_change)
+        prev_beta = lr.beta[1]
+        beta_estimates_greedy.append(lr.beta[1])
+
+        ctr += 1
+
+    return dropped_order, exact_changes_beta, beta_estimates_greedy
