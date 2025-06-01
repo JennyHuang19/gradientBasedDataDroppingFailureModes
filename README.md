@@ -10,6 +10,6 @@ Recent works have proposed a variety of approximation methods to detect this for
 
 - This greedy approach is also computationally efficient—often significantly faster than its competitors.
 
-Code in this repo reproduces all key experiments in 
+Code in this repo reproduces all key experiments in the paper
 **[Approximations to Worst-Case Data Dropping: Unmasking Failure Modes](https://arxiv.org/abs/2408.09008)**
 
