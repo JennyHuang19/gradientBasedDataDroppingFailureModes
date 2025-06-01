@@ -1,7 +1,4 @@
 # gradientBasedDataDroppingFailureModes
-Approximations to worst-case data dropping: unmasking failure modes.
-
-Code accompanying the paper: Approximations to Worst-Case Data Dropping: Unmasking Failure Modes
 
 This repository contains code and experiments for auditing the robustness of model conclusions to worst-case data removal. A central concern in data analysis is whether dropping a very small subset of data can significantly change the outcome of a model, posing risks to generalization and trustworthiness. Identifying such data points directly is computationally intractable, even for simple models like OLS regression.
 
@@ -13,4 +10,6 @@ Recent works have proposed a variety of approximation methods to detect this for
 
 - This greedy approach is also computationally efficient—often significantly faster than its competitors.
 
-The code in this repo reproduces all key experiments and figures from our paper.
+The code in this repo reproduces all key experiments and figures in the paper,
+**[Approximations to Worst-Case Data Dropping: Unmasking Failure Modes](https://arxiv.org/abs/2408.09008)**
+
